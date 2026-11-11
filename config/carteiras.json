@@ -1,0 +1,242 @@
+{
+  "capital_inicial": 1000000,
+  "data_inicio": "2026-08-03",
+  "investimento_minimo": 0.95,
+  "carteiras": [
+    {
+      "id": "liga",
+      "nome": "Fundo da Liga",
+      "fundo_da_liga": true,
+      "operacoes": [
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "ITUB4",
+          "valor": 250000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "WEGE3",
+          "valor": 200000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "SBSP3",
+          "valor": 200000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "MELI34",
+          "valor": 170000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "PETR4",
+          "valor": 150000
+        }
+      ]
+    },
+    {
+      "id": "ana",
+      "nome": "Ana Clara R.",
+      "operacoes": [
+        {
+          "data": "2026-08-04",
+          "tipo": "compra",
+          "ticker": "ITUB4",
+          "valor": 300000
+        },
+        {
+          "data": "2026-08-04",
+          "tipo": "compra",
+          "ticker": "WEGE3",
+          "valor": 250000
+        },
+        {
+          "data": "2026-08-04",
+          "tipo": "compra",
+          "ticker": "MELI34",
+          "valor": 210000
+        },
+        {
+          "data": "2026-08-04",
+          "tipo": "compra",
+          "ticker": "SUZB3",
+          "valor": 210000
+        }
+      ]
+    },
+    {
+      "id": "beatriz",
+      "nome": "Beatriz S.",
+      "operacoes": [
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "BBAS3",
+          "valor": 250000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "TAEE11",
+          "valor": 200000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "VALE3",
+          "valor": 200000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "ABEV3",
+          "valor": 150000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "PETR4",
+          "valor": 170000
+        },
+        {
+          "data": "2026-10-01",
+          "tipo": "venda",
+          "ticker": "ABEV3",
+          "fracao": 1.0
+        },
+        {
+          "data": "2026-10-01",
+          "tipo": "compra",
+          "ticker": "PETR4",
+          "valor": 140000
+        }
+      ]
+    },
+    {
+      "id": "gabriel",
+      "nome": "Gabriel G.",
+      "operacoes": [
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "MELI34",
+          "valor": 300000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "LREN3",
+          "valor": 250000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "RADL3",
+          "valor": 250000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "ABEV3",
+          "valor": 180000
+        }
+      ]
+    },
+    {
+      "id": "lucas",
+      "nome": "Lucas M.",
+      "operacoes": [
+        {
+          "data": "2026-08-05",
+          "tipo": "compra",
+          "ticker": "PRIO3",
+          "valor": 250000
+        },
+        {
+          "data": "2026-08-05",
+          "tipo": "compra",
+          "ticker": "SBSP3",
+          "valor": 250000
+        },
+        {
+          "data": "2026-08-05",
+          "tipo": "compra",
+          "ticker": "B3SA3",
+          "valor": 220000
+        },
+        {
+          "data": "2026-08-05",
+          "tipo": "compra",
+          "ticker": "NVDC34",
+          "valor": 250000
+        }
+      ]
+    },
+    {
+      "id": "mariana",
+      "nome": "Mariana T.",
+      "operacoes": [
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "WEGE3",
+          "valor": 300000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "EMBJ3",
+          "valor": 300000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "ITUB4",
+          "valor": 220000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "RENT3",
+          "valor": 160000
+        }
+      ]
+    },
+    {
+      "id": "rafael",
+      "nome": "Rafael C.",
+      "operacoes": [
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "NVDC34",
+          "valor": 350000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "MSFT34",
+          "valor": 300000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "GOGL34",
+          "valor": 250000
+        },
+        {
+          "data": "2026-08-03",
+          "tipo": "compra",
+          "ticker": "EQTL3",
+          "valor": 90000
+        }
+      ]
+    }
+  ]
+}

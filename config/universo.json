@@ -1,0 +1,618 @@
+{
+  "_comentario": "acoes = lista reserva do Ibovespa (set-dez/2026, aproximada), usada só se a B3 não responder; o agente busca a composição oficial a cada execução. Nome e setor daqui têm prioridade. extras = ativos fora do índice que o site acompanha (BDRs das carteiras).",
+  "benchmark": {
+    "ticker": "^BVSP",
+    "nome": "Ibovespa",
+    "preco_base": 128000
+  },
+  "acoes": [
+    {
+      "ticker": "ITUB4",
+      "nome": "Itaú Unibanco",
+      "setor": "Bancos",
+      "preco_base": 37.05,
+      "pl": 9.1,
+      "dy": 7.2,
+      "pvp": 2.0,
+      "roe": 22.1
+    },
+    {
+      "ticker": "BBAS3",
+      "nome": "Banco do Brasil",
+      "setor": "Bancos",
+      "preco_base": 21.05,
+      "pl": 4.3,
+      "dy": 9.8,
+      "pvp": 0.7,
+      "roe": 16.0
+    },
+    {
+      "ticker": "BBDC4",
+      "nome": "Bradesco",
+      "setor": "Bancos",
+      "preco_base": 15.4,
+      "pl": 8.4,
+      "dy": 6.6,
+      "pvp": 0.9,
+      "roe": 11.5
+    },
+    {
+      "ticker": "BPAC11",
+      "nome": "BTG Pactual",
+      "setor": "Bancos",
+      "preco_base": 44.6,
+      "pl": 12.5,
+      "dy": 2.4,
+      "pvp": 2.6,
+      "roe": 23.0
+    },
+    {
+      "ticker": "B3SA3",
+      "nome": "B3",
+      "setor": "Serviços financeiros",
+      "preco_base": 13.85,
+      "pl": 14.0,
+      "dy": 5.5,
+      "pvp": 2.8,
+      "roe": 21.0
+    },
+    {
+      "ticker": "PETR4",
+      "nome": "Petrobras",
+      "setor": "Petróleo e gás",
+      "preco_base": 33.4,
+      "pl": 5.2,
+      "dy": 12.5,
+      "pvp": 1.0,
+      "roe": 20.0
+    },
+    {
+      "ticker": "PRIO3",
+      "nome": "PRIO",
+      "setor": "Petróleo e gás",
+      "preco_base": 37.6,
+      "pl": 7.9,
+      "dy": 0.0,
+      "pvp": 1.6,
+      "roe": 24.0
+    },
+    {
+      "ticker": "VALE3",
+      "nome": "Vale",
+      "setor": "Mineração",
+      "preco_base": 55.1,
+      "pl": 6.8,
+      "dy": 8.1,
+      "pvp": 1.2,
+      "roe": 18.0
+    },
+    {
+      "ticker": "SUZB3",
+      "nome": "Suzano",
+      "setor": "Papel e celulose",
+      "preco_base": 52.9,
+      "pl": 8.0,
+      "dy": 3.0,
+      "pvp": 1.4,
+      "roe": 18.0
+    },
+    {
+      "ticker": "WEGE3",
+      "nome": "WEG",
+      "setor": "Bens de capital",
+      "preco_base": 42.5,
+      "pl": 27.5,
+      "dy": 1.9,
+      "pvp": 8.1,
+      "roe": 30.0
+    },
+    {
+      "ticker": "EMBJ3",
+      "nome": "Embraer",
+      "setor": "Aviação",
+      "preco_base": 69.4,
+      "pl": 22.0,
+      "dy": 0.3,
+      "pvp": 2.9,
+      "roe": 13.0
+    },
+    {
+      "ticker": "SBSP3",
+      "nome": "Sabesp",
+      "setor": "Saneamento",
+      "preco_base": 114.0,
+      "pl": 14.0,
+      "dy": 1.2,
+      "pvp": 2.2,
+      "roe": 15.0
+    },
+    {
+      "ticker": "EQTL3",
+      "nome": "Equatorial",
+      "setor": "Energia elétrica",
+      "preco_base": 35.9,
+      "pl": 16.0,
+      "dy": 2.5,
+      "pvp": 1.9,
+      "roe": 12.0
+    },
+    {
+      "ticker": "AXIA3",
+      "nome": "Axia Energia (ex-Eletrobras)",
+      "setor": "Energia elétrica",
+      "preco_base": 45.3,
+      "pl": 11.0,
+      "dy": 2.1,
+      "pvp": 0.9,
+      "roe": 8.5
+    },
+    {
+      "ticker": "TAEE11",
+      "nome": "Taesa",
+      "setor": "Transmissão de energia",
+      "preco_base": 36.4,
+      "pl": 9.5,
+      "dy": 9.0,
+      "pvp": 1.9,
+      "roe": 20.0
+    },
+    {
+      "ticker": "MGLU3",
+      "nome": "Magazine Luiza",
+      "setor": "Varejo",
+      "preco_base": 9.8,
+      "pl": null,
+      "dy": 0.0,
+      "pvp": 0.9,
+      "roe": -2.0
+    },
+    {
+      "ticker": "LREN3",
+      "nome": "Lojas Renner",
+      "setor": "Varejo de moda",
+      "preco_base": 18.3,
+      "pl": 12.0,
+      "dy": 3.4,
+      "pvp": 1.6,
+      "roe": 13.0
+    },
+    {
+      "ticker": "RADL3",
+      "nome": "Raia Drogasil",
+      "setor": "Farmácias",
+      "preco_base": 22.7,
+      "pl": 28.0,
+      "dy": 1.3,
+      "pvp": 6.0,
+      "roe": 20.0
+    },
+    {
+      "ticker": "ABEV3",
+      "nome": "Ambev",
+      "setor": "Bebidas",
+      "preco_base": 12.75,
+      "pl": 13.5,
+      "dy": 6.0,
+      "pvp": 2.3,
+      "roe": 17.0
+    },
+    {
+      "ticker": "RENT3",
+      "nome": "Localiza",
+      "setor": "Aluguel de carros",
+      "preco_base": 48.2,
+      "pl": 18.0,
+      "dy": 1.8,
+      "pvp": 2.4,
+      "roe": 13.0
+    },
+    {
+      "ticker": "ALOS3",
+      "nome": "Allos",
+      "setor": "Shoppings",
+      "preco_base": 23.1
+    },
+    {
+      "ticker": "ASAI3",
+      "nome": "Assaí",
+      "setor": "Varejo alimentar",
+      "preco_base": 9.4
+    },
+    {
+      "ticker": "AURE3",
+      "nome": "Auren Energia",
+      "setor": "Energia elétrica",
+      "preco_base": 10.2
+    },
+    {
+      "ticker": "AXIA6",
+      "nome": "Axia Energia PNB (ex-Eletrobras)",
+      "setor": "Energia elétrica",
+      "preco_base": 49.1
+    },
+    {
+      "ticker": "AZZA3",
+      "nome": "Azzas 2154",
+      "setor": "Varejo de moda",
+      "preco_base": 38.5
+    },
+    {
+      "ticker": "BBDC3",
+      "nome": "Bradesco ON",
+      "setor": "Bancos",
+      "preco_base": 13.7
+    },
+    {
+      "ticker": "BBSE3",
+      "nome": "BB Seguridade",
+      "setor": "Seguros",
+      "preco_base": 36.2
+    },
+    {
+      "ticker": "BEEF3",
+      "nome": "Minerva",
+      "setor": "Frigoríficos",
+      "preco_base": 6.4
+    },
+    {
+      "ticker": "BRAP4",
+      "nome": "Bradespar",
+      "setor": "Holding de mineração",
+      "preco_base": 18.3
+    },
+    {
+      "ticker": "BRAV3",
+      "nome": "Brava Energia",
+      "setor": "Petróleo e gás",
+      "preco_base": 17.2
+    },
+    {
+      "ticker": "BRKM5",
+      "nome": "Braskem",
+      "setor": "Petroquímica",
+      "preco_base": 8.9
+    },
+    {
+      "ticker": "CEAB3",
+      "nome": "C&A",
+      "setor": "Varejo de moda",
+      "preco_base": 15.4
+    },
+    {
+      "ticker": "CMIG4",
+      "nome": "Cemig",
+      "setor": "Energia elétrica",
+      "preco_base": 11.1
+    },
+    {
+      "ticker": "CMIN3",
+      "nome": "CSN Mineração",
+      "setor": "Mineração",
+      "preco_base": 5.3
+    },
+    {
+      "ticker": "COGN3",
+      "nome": "Cogna",
+      "setor": "Educação",
+      "preco_base": 3.2
+    },
+    {
+      "ticker": "CPFE3",
+      "nome": "CPFL Energia",
+      "setor": "Energia elétrica",
+      "preco_base": 42.3
+    },
+    {
+      "ticker": "CPLE3",
+      "nome": "Copel",
+      "setor": "Energia elétrica",
+      "preco_base": 13.2
+    },
+    {
+      "ticker": "CSAN3",
+      "nome": "Cosan",
+      "setor": "Holding de energia",
+      "preco_base": 7.1
+    },
+    {
+      "ticker": "CSNA3",
+      "nome": "CSN",
+      "setor": "Siderurgia",
+      "preco_base": 8.6
+    },
+    {
+      "ticker": "CURY3",
+      "nome": "Cury",
+      "setor": "Construção civil",
+      "preco_base": 30.4
+    },
+    {
+      "ticker": "CXSE3",
+      "nome": "Caixa Seguridade",
+      "setor": "Seguros",
+      "preco_base": 15.6
+    },
+    {
+      "ticker": "CYRE3",
+      "nome": "Cyrela",
+      "setor": "Construção civil",
+      "preco_base": 28.1
+    },
+    {
+      "ticker": "DIRR3",
+      "nome": "Direcional",
+      "setor": "Construção civil",
+      "preco_base": 15.3
+    },
+    {
+      "ticker": "EGIE3",
+      "nome": "Engie Brasil",
+      "setor": "Energia elétrica",
+      "preco_base": 41.2
+    },
+    {
+      "ticker": "ENEV3",
+      "nome": "Eneva",
+      "setor": "Gás e energia",
+      "preco_base": 17.1
+    },
+    {
+      "ticker": "ENGI11",
+      "nome": "Energisa",
+      "setor": "Energia elétrica",
+      "preco_base": 48.4
+    },
+    {
+      "ticker": "FLRY3",
+      "nome": "Fleury",
+      "setor": "Saúde",
+      "preco_base": 15.2
+    },
+    {
+      "ticker": "GGBR4",
+      "nome": "Gerdau",
+      "setor": "Siderurgia",
+      "preco_base": 17.6
+    },
+    {
+      "ticker": "GOAU4",
+      "nome": "Metalúrgica Gerdau",
+      "setor": "Siderurgia",
+      "preco_base": 10.1
+    },
+    {
+      "ticker": "HAPV3",
+      "nome": "Hapvida",
+      "setor": "Saúde",
+      "preco_base": 40.2
+    },
+    {
+      "ticker": "HYPE3",
+      "nome": "Hypera",
+      "setor": "Farmacêutico",
+      "preco_base": 24.3
+    },
+    {
+      "ticker": "IGTI11",
+      "nome": "Iguatemi",
+      "setor": "Shoppings",
+      "preco_base": 23.4
+    },
+    {
+      "ticker": "IRBR3",
+      "nome": "IRB Re",
+      "setor": "Seguros",
+      "preco_base": 48.1
+    },
+    {
+      "ticker": "ISAE4",
+      "nome": "Isa Energia",
+      "setor": "Transmissão de energia",
+      "preco_base": 25.2
+    },
+    {
+      "ticker": "ITSA4",
+      "nome": "Itaúsa",
+      "setor": "Holding de bancos",
+      "preco_base": 11.3
+    },
+    {
+      "ticker": "KLBN11",
+      "nome": "Klabin",
+      "setor": "Papel e celulose",
+      "preco_base": 19.2
+    },
+    {
+      "ticker": "MBRF3",
+      "nome": "MBRF (Marfrig e BRF)",
+      "setor": "Frigoríficos",
+      "preco_base": 20.3
+    },
+    {
+      "ticker": "MOTV3",
+      "nome": "Motiva (ex-CCR)",
+      "setor": "Concessões",
+      "preco_base": 13.5
+    },
+    {
+      "ticker": "MRVE3",
+      "nome": "MRV",
+      "setor": "Construção civil",
+      "preco_base": 8.1
+    },
+    {
+      "ticker": "MULT3",
+      "nome": "Multiplan",
+      "setor": "Shoppings",
+      "preco_base": 27.2
+    },
+    {
+      "ticker": "NATU3",
+      "nome": "Natura",
+      "setor": "Cosméticos",
+      "preco_base": 10.3
+    },
+    {
+      "ticker": "PCAR3",
+      "nome": "GPA",
+      "setor": "Varejo alimentar",
+      "preco_base": 3.5
+    },
+    {
+      "ticker": "PETR3",
+      "nome": "Petrobras ON",
+      "setor": "Petróleo e gás",
+      "preco_base": 36.2
+    },
+    {
+      "ticker": "POMO4",
+      "nome": "Marcopolo",
+      "setor": "Bens de capital",
+      "preco_base": 7.8
+    },
+    {
+      "ticker": "PSSA3",
+      "nome": "Porto",
+      "setor": "Seguros",
+      "preco_base": 47.1
+    },
+    {
+      "ticker": "RAIL3",
+      "nome": "Rumo",
+      "setor": "Logística",
+      "preco_base": 16.3
+    },
+    {
+      "ticker": "RAIZ4",
+      "nome": "Raízen",
+      "setor": "Açúcar e etanol",
+      "preco_base": 1.2
+    },
+    {
+      "ticker": "RDOR3",
+      "nome": "Rede D'Or",
+      "setor": "Saúde",
+      "preco_base": 41.3
+    },
+    {
+      "ticker": "SANB11",
+      "nome": "Santander Brasil",
+      "setor": "Bancos",
+      "preco_base": 29.1
+    },
+    {
+      "ticker": "SMFT3",
+      "nome": "Smart Fit",
+      "setor": "Academias",
+      "preco_base": 24.2
+    },
+    {
+      "ticker": "SMTO3",
+      "nome": "São Martinho",
+      "setor": "Açúcar e etanol",
+      "preco_base": 17.1
+    },
+    {
+      "ticker": "TEND3",
+      "nome": "Tenda",
+      "setor": "Construção civil",
+      "preco_base": 26.3
+    },
+    {
+      "ticker": "TIMS3",
+      "nome": "TIM",
+      "setor": "Telecomunicações",
+      "preco_base": 21.4
+    },
+    {
+      "ticker": "TOTS3",
+      "nome": "Totvs",
+      "setor": "Software",
+      "preco_base": 43.2
+    },
+    {
+      "ticker": "UGPA3",
+      "nome": "Ultrapar",
+      "setor": "Distribuição de combustíveis",
+      "preco_base": 21.1
+    },
+    {
+      "ticker": "USIM5",
+      "nome": "Usiminas",
+      "setor": "Siderurgia",
+      "preco_base": 5.1
+    },
+    {
+      "ticker": "VAMO3",
+      "nome": "Vamos",
+      "setor": "Locação de máquinas e caminhões",
+      "preco_base": 4.5
+    },
+    {
+      "ticker": "VBBR3",
+      "nome": "Vibra Energia",
+      "setor": "Distribuição de combustíveis",
+      "preco_base": 24.2
+    },
+    {
+      "ticker": "VIVA3",
+      "nome": "Vivara",
+      "setor": "Varejo de joias",
+      "preco_base": 30.1
+    },
+    {
+      "ticker": "VIVT3",
+      "nome": "Telefônica Brasil (Vivo)",
+      "setor": "Telecomunicações",
+      "preco_base": 33.2
+    },
+    {
+      "ticker": "YDUQ3",
+      "nome": "Yduqs",
+      "setor": "Educação",
+      "preco_base": 13.1
+    }
+  ],
+  "extras": [
+    {
+      "ticker": "MELI34",
+      "nome": "Mercado Livre (BDR)",
+      "setor": "E-commerce",
+      "preco_base": 104.8,
+      "pl": 48.0,
+      "dy": 0.0,
+      "pvp": 18.0,
+      "roe": 40.0
+    },
+    {
+      "ticker": "NVDC34",
+      "nome": "Nvidia (BDR)",
+      "setor": "Semicondutores",
+      "preco_base": 17.1,
+      "pl": 45.0,
+      "dy": 0.0,
+      "pvp": 35.0,
+      "roe": 90.0
+    },
+    {
+      "ticker": "MSFT34",
+      "nome": "Microsoft (BDR)",
+      "setor": "Software e nuvem",
+      "preco_base": 94.2,
+      "pl": 34.0,
+      "dy": 0.7,
+      "pvp": 10.5,
+      "roe": 33.0
+    },
+    {
+      "ticker": "GOGL34",
+      "nome": "Alphabet (BDR)",
+      "setor": "Internet e nuvem",
+      "preco_base": 80.1,
+      "pl": 24.0,
+      "dy": 0.4,
+      "pvp": 7.2,
+      "roe": 31.0
+    }
+  ]
+}
