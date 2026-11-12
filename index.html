@@ -503,6 +503,7 @@ footer{border-top:1px solid var(--line);padding-block:24px;font-size:.85rem;colo
 
 <div class="modal" id="modal" hidden><div class="modal-card" id="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title"></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* ===================== DADOS (edite aqui) ===================== */
 const MES_ATUAL = { m: 11, a: 2026, nome: 'novembro/2026' };
@@ -902,7 +903,11 @@ function savePub(){ try { localStorage.setItem(KEYC, JSON.stringify(CARTAS)); lo
    NÃO protege nada: quem garante o acesso é o servidor. */
 // No site publicado (github.io) a área de membros fica oculta até o Supabase estar conectado;
 // abrindo o arquivo localmente ou na prévia, ela continua disponível para testes.
-const CONTAS_ATIVAS = !/github\.io$/.test(location.hostname);
+// Conexão com o Supabase. A chave "anon" é pública por definição: quem protege os dados são as regras do banco (RLS).
+// NUNCA coloque aqui a chave service_role.
+const SUPABASE_URL = '', SUPABASE_ANON = '';
+const MODO_SB = !!(SUPABASE_URL && SUPABASE_ANON && window.supabase);
+const CONTAS_ATIVAS = MODO_SB || !/github\.io$/.test(location.hostname);
 const KEYU = 'uerjf-contas-v1', KEYS = 'uerjf-sessao-v1', KEYLOG = 'uerjf-auditoria-v1';
 // Domínios aceitos no cadastro. Vazio = qualquer e-mail (a aprovação manual é o filtro). Ex.: ['uerj.br', 'graduacao.uerj.br']
 const DOMINIOS_PERMITIDOS = [];
@@ -939,6 +944,100 @@ const pode = a => { const u = eu(); if (!u) return false; if (u.papel === 'presi
 const minhaCarteira = () => { const u = eu(); return u ? funds.find(f => f.owner === u.id) : null; };
 const podeEditarCarteira = f => f.isLeague ? pode('editarFundo') : (!!eu() && f.owner === eu().id) || pode('moderar');
 const papelTxt = u => u.papel === 'presidente' ? 'Presidente' : (u.perms || []).length ? 'Membro com permissões' : 'Membro';
+
+/* ===================== CONTAS NO SUPABASE =====================
+   Com MODO_SB ligado, as ações abaixo substituem a simulação local: o site só pede, o servidor decide.
+   Toda ação administrativa passa por funções do banco que conferem o papel e as permissões de quem pede. */
+let sb = null;
+const fmtTs = t => { if (!t) return ''; const d = new Date(t); return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }); };
+async function sbCarregar(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session) { contas = []; sessao = ''; auditoria = []; return; }
+  const uid = session.user.id;
+  const [{ data: perfis }, { data: perms }, { data: carts }] = await Promise.all([
+    sb.from('perfis').select('id,nome,email,matricula,curso,papel,status,criado_em'),   // RLS: o próprio, ou todos para quem aprova
+    sb.from('permissoes').select('usuario_id,permissao'),                                // RLS: as próprias, ou todas para o presidente
+    sb.from('carteiras').select('id,dono_id,nome').eq('is_liga', false)
+  ]);
+  contas = (perfis || []).map(x => ({ id:x.id, nome:x.nome, email:x.email, matricula:x.matricula, curso:x.curso, papel:x.papel, status:x.status,
+    criado: fmtTs(x.criado_em).slice(0, 10), perms: (perms || []).filter(y => y.usuario_id === x.id).map(y => y.permissao) }));
+  sessao = uid;
+  (carts || []).forEach(c => { if (!funds.some(f => f.owner === c.dono_id)) funds.push({ id:c.id, owner:c.dono_id, name:c.nome, color:PALETTE[funds.length % PALETTE.length], motivation:'Escreva aqui por que montou essa carteira.', holdings:[] }); });
+  const me = contas.find(x => x.id === uid);
+  if (me && me.papel === 'presidente' && me.status === 'ativo') {
+    const { data: log } = await sb.from('auditoria').select('quando,autor_id,acao').order('quando', { ascending:false }).limit(200);
+    const nome = id => (contas.find(x => x.id === id) || {}).nome || 'Sistema';
+    auditoria = (log || []).map(l => ({ quando: fmtTs(l.quando), quem: nome(l.autor_id), acao: l.acao + '.' }));
+  } else auditoria = [];
+}
+async function sbRpc(fn, args){
+  const { error } = await sb.rpc(fn, args);
+  if (error) { alert('O servidor recusou a operação: ' + error.message); return false; }
+  return true;
+}
+const sbRecarregar = async () => { await sbCarregar(); render(); };
+const SB_ACOES = {
+  logout: async () => { await sb.auth.signOut(); contas = []; sessao = ''; auditoria = []; st.pub = null; st.edit = false; show(); },
+  aprovar: async el => { if (await sbRpc('decidir_cadastro', { alvo: el.dataset.u, aprovar: true })) sbRecarregar(); },
+  recusar: async el => { if (await sbRpc('decidir_cadastro', { alvo: el.dataset.u, aprovar: false })) sbRecarregar(); },
+  perm: async el => { await sbRpc('definir_permissao', { alvo: el.dataset.u, p: el.dataset.p, conceder: el.checked }); sbRecarregar(); },
+  presetdir: async el => { const u = contas.find(x => x.id === el.dataset.u); if (!u) return;
+    for (const p of PRESET_DIRETORIA.filter(k => !(u.perms || []).includes(k))) { if (!(await sbRpc('definir_permissao', { alvo: u.id, p, conceder: true }))) break; }
+    sbRecarregar(); },
+  suspender: async el => { const id = el.dataset.u; if (st.confirm !== 'susp-' + id) { st.confirm = 'susp-' + id; render(); return; }
+    st.confirm = null; if (await sbRpc('definir_status', { alvo: id, novo: 'suspenso' })) sbRecarregar(); },
+  reativar: async el => { if (await sbRpc('definir_status', { alvo: el.dataset.u, novo: 'ativo' })) sbRecarregar(); },
+  transferir: async () => { if (st.confirm !== 'transferir') { st.confirm = 'transferir'; render(); return; }
+    st.confirm = null; const novo = document.getElementById('pres-novo').value;
+    if (await sbRpc('transferir_presidencia', { novo })) { await sbCarregar(); go('inicio'); } },
+  criarcarteira: async () => { const u = eu(); if (!u) return;
+    const { data, error } = await sb.from('carteiras').insert({ dono_id: u.id, nome: u.nome }).select('id').single();
+    if (error) { alert(/duplicate|unique/i.test(error.message) ? 'Você já tem uma carteira. O limite é de uma por membro.' : 'O servidor recusou a operação: ' + error.message); return; }
+    funds.push({ id:data.id, owner:u.id, name:u.nome, color:PALETTE[funds.length % PALETTE.length], motivation:'Escreva aqui por que montou essa carteira.', holdings:[] });
+    st.sel = data.id; st.edit = true; save(); render(); },
+  resetcontas: async () => {}
+};
+async function sbLogin(em, se){
+  const { error } = await sb.auth.signInWithPassword({ email: em, password: se });
+  if (error) { modalLogin(['alert-down', /confirm/i.test(error.message) ? 'Confirme o seu e-mail pelo link que enviamos antes de entrar.' : 'E-mail ou senha incorretos.']); return; }
+  await sbCarregar();
+  const u = contas.find(x => x.id === sessao);
+  if (!u || u.status !== 'ativo') {
+    const stt = u ? u.status : 'pendente';
+    await sb.auth.signOut(); contas = []; sessao = '';
+    modalLogin(stt === 'recusado' ? ['alert-down', 'Seu pedido de cadastro não foi aprovado. Em caso de dúvida, fale com a diretoria.']
+      : stt === 'suspenso' ? ['alert-down', 'Seu acesso está suspenso. Fale com a presidência.']
+      : ['alert-warn', 'Seu cadastro ainda aguarda aprovação. Você poderá entrar assim que for aprovado.']);
+    return;
+  }
+  document.getElementById('modal').hidden = true; show();
+}
+async function sbCadastro(){
+  const v = id => document.getElementById(id).value.trim();
+  const em = v('cd-e').toLowerCase();
+  if (DOMINIOS_PERMITIDOS.length && !DOMINIOS_PERMITIDOS.some(d => em.endsWith('@' + d))) { modalCadastro(['alert-down', 'Use o seu e-mail institucional da UERJ.']); return; }
+  if (document.getElementById('cd-s').value !== document.getElementById('cd-s2').value) { modalCadastro(['alert-down', 'As senhas não conferem.']); return; }
+  const { data, error } = await sb.auth.signUp({ email: em, password: document.getElementById('cd-s').value,
+    options: { data: { nome: v('cd-n'), matricula: v('cd-m'), curso: v('cd-c') }, emailRedirectTo: location.origin + location.pathname } });
+  if (error) { modalCadastro(['alert-down', /registered|exists/i.test(error.message) ? 'Já existe um cadastro com este e-mail.' : 'Não foi possível enviar o pedido: ' + error.message]); return; }
+  if (data && data.session) await sb.auth.signOut();   // a conta nasce pendente: não fica logada
+  modalCadastro(['alert-up', 'Pedido enviado. Confirme o seu e-mail pelo link que enviamos; depois disso, o pedido segue para aprovação.'], true);
+}
+if (MODO_SB) {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
+    const fn = SB_ACOES[el.dataset.act]; if (!fn) return;
+    e.stopImmediatePropagation(); if (el.dataset.act !== 'perm') e.preventDefault();
+    fn(el);
+  }, true);
+  document.addEventListener('submit', e => {
+    if (e.target.id === 'form-login') { e.preventDefault(); e.stopImmediatePropagation(); sbLogin(document.getElementById('lg-e').value.trim().toLowerCase(), document.getElementById('lg-s').value); }
+    if (e.target.id === 'form-cadastro') { e.preventDefault(); e.stopImmediatePropagation(); sbCadastro(); }
+  }, true);
+  contas = []; sessao = ''; auditoria = [];
+  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT' || ev === 'TOKEN_REFRESHED') return; setTimeout(() => sbCarregar().then(show), 0); });
+}
 const st = { slide:0, slideT:Date.now(), slidePausa:false, slideHover:false, pub:null, sel:'', doc:0, edit:false, query:'', stock:'ITUB4', sort:'mc', confirm:null, propOk:false, propFiltro:'Todas' };
 
 /* ===================== UTILIDADES ===================== */
@@ -1785,6 +1884,13 @@ function renderPerfil(){
     return;
   }
   const u = eu();
+  if (MODO_SB) {
+    document.getElementById('perfil').innerHTML = u
+      ? `<span class="conta-nome">${esc(u.nome)}<span>${papelTxt(u)}</span></span><button class="perfil-b" data-act="logout">Sair</button>`
+      : `<button class="perfil-b" data-act="login">Entrar</button><button class="perfil-b cta" data-act="cadastro">Criar conta</button>`;
+    document.getElementById('demo-bar').innerHTML = `<b>Prévia.</b> Conteúdos com o selo <span class="chip chip-ex">Exemplo</span> são ilustrativos.`;
+    return;
+  }
   document.getElementById('perfil').innerHTML = u
     ? `<span class="conta-nome">${esc(u.nome)}<span>${papelTxt(u)}</span></span><button class="perfil-b" data-act="logout">Sair</button>`
     : `<button class="perfil-b" data-act="login">Entrar</button><button class="perfil-b cta" data-act="cadastro">Criar conta</button>`;
