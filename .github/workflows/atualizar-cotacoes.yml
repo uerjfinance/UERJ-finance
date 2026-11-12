@@ -29,6 +29,9 @@ jobs:
       - run: pip install -r agente/requirements.txt
       - name: Buscar cotações no Yahoo Finance
         run: python agente/atualizar_cotacoes.py --fonte yahoo --universo config/universo.json --saida dados/cotacoes.json
+      - name: Manter o Supabase ativo (o plano gratuito pausa após 7 dias sem uso)
+        continue-on-error: true
+        run: curl -s -o /dev/null -w "Supabase: HTTP %{http_code}\n" -H "apikey: sb_publishable_0FhOmPYTv2vznjnfHIRDKg_zDk_MH5G" "https://fupmxsdorbjsvzlhgvjv.supabase.co/rest/v1/carteiras?select=id&limit=1"
       - name: Publicar se houve mudança
         run: |
           if git diff --quiet -- dados/cotacoes.json && [ -z "$(git ls-files --others -- dados/cotacoes.json)" ]; then

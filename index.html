@@ -503,7 +503,7 @@ footer{border-top:1px solid var(--line);padding-block:24px;font-size:.85rem;colo
 
 <div class="modal" id="modal" hidden><div class="modal-card" id="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title"></div></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <script>
 /* ===================== DADOS (edite aqui) ===================== */
 const MES_ATUAL = { m: 11, a: 2026, nome: 'novembro/2026' };
@@ -903,9 +903,9 @@ function savePub(){ try { localStorage.setItem(KEYC, JSON.stringify(CARTAS)); lo
    NÃO protege nada: quem garante o acesso é o servidor. */
 // No site publicado (github.io) a área de membros fica oculta até o Supabase estar conectado;
 // abrindo o arquivo localmente ou na prévia, ela continua disponível para testes.
-// Conexão com o Supabase. A chave "anon" é pública por definição: quem protege os dados são as regras do banco (RLS).
+// Conexão com o Supabase. SUPABASE_ANON recebe a "publishable key" (sb_publishable_...) ou a anon legada; ela é pública por definição: quem protege os dados são as regras do banco (RLS).
 // NUNCA coloque aqui a chave service_role.
-const SUPABASE_URL = '', SUPABASE_ANON = '';
+const SUPABASE_URL = 'https://fupmxsdorbjsvzlhgvjv.supabase.co', SUPABASE_ANON = 'sb_publishable_0FhOmPYTv2vznjnfHIRDKg_zDk_MH5G';
 const MODO_SB = !!(SUPABASE_URL && SUPABASE_ANON && window.supabase);
 const CONTAS_ATIVAS = MODO_SB || !/github\.io$/.test(location.hostname);
 const KEYU = 'uerjf-contas-v1', KEYS = 'uerjf-sessao-v1', KEYLOG = 'uerjf-auditoria-v1';

@@ -1,0 +1,27 @@
+name: Verificar Supabase
+
+# Confere, com a chave pública (sem login), se as tabelas existem e se as regras de acesso barram visitantes.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    env:
+      URL: https://fupmxsdorbjsvzlhgvjv.supabase.co
+      KEY: sb_publishable_0FhOmPYTv2vznjnfHIRDKg_zDk_MH5G
+    steps:
+      - name: Tabelas e regras para visitante anônimo
+        run: |
+          h=(-H "apikey: $KEY" -H "Content-Type: application/json")
+          for t in perfis permissoes carteiras posicoes auditoria; do
+            echo "== GET $t"; curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" "$URL/rest/v1/$t?select=*&limit=3"
+          done
+          echo "== Tentativa anônima de aprovar cadastro (deve falhar)"
+          curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" -X POST "$URL/rest/v1/rpc/decidir_cadastro" -d '{"alvo":"00000000-0000-0000-0000-000000000000","aprovar":true}'
+          echo "== Tentativa anônima de conceder permissão (deve falhar)"
+          curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" -X POST "$URL/rest/v1/rpc/definir_permissao" -d '{"alvo":"00000000-0000-0000-0000-000000000000","p":"aprovar","conceder":true}'
+          echo "== Tentativa anônima de criar carteira (deve falhar)"
+          curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" -X POST "$URL/rest/v1/carteiras" -d '{"nome":"invasor","is_liga":false,"dono_id":"00000000-0000-0000-0000-000000000000"}'
+          echo "== Tentativa anônima de escrever na auditoria (deve falhar)"
+          curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" -X POST "$URL/rest/v1/auditoria" -d '{"acao":"teste"}'
