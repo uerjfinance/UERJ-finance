@@ -1,0 +1,42 @@
+name: Backup semanal do banco
+
+# Todo domingo às 03:00 de Brasília (06:00 UTC), e quando acionado manualmente.
+# O arquivo sai CRIPTOGRAFADO (o repositório é público): sem a senha BACKUP_SENHA ninguém o abre.
+# Fica guardado por 90 dias na aba Actions, em "Artifacts" da execução.
+on:
+  schedule:
+    - cron: "0 6 * * 0"
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    container: postgres:17
+    timeout-minutes: 15
+    steps:
+      - name: Conferir segredos
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+          SENHA: ${{ secrets.BACKUP_SENHA }}
+        run: |
+          if [ -z "$DB" ] || [ -z "$SENHA" ]; then
+            echo "Faltam os segredos SUPABASE_DB_URL e/ou BACKUP_SENHA em Settings > Secrets and variables > Actions."; exit 1
+          fi
+      - name: Exportar e criptografar
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+          SENHA: ${{ secrets.BACKUP_SENHA }}
+        run: |
+          apt-get update -qq && apt-get install -y -qq gnupg >/dev/null
+          ARQ="backup-$(date -u +%Y-%m-%d).sql"
+          # dados da liga (schema public) + contas do Auth (schema auth)
+          pg_dump "$DB" --no-owner --no-privileges --schema=public --schema=auth -f "$ARQ"
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$SENHA" --symmetric --cipher-algo AES256 -o "$ARQ.gpg" "$ARQ"
+          rm -f "$ARQ"
+          ls -la "$ARQ.gpg"
+          echo "ARQ=$ARQ.gpg" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-banco
+          path: ${{ env.ARQ }}
+          retention-days: 90
