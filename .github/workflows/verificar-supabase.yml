@@ -3,6 +3,8 @@ name: Verificar Supabase
 # Confere, com a chave pública (sem login), se as tabelas existem e se as regras de acesso barram visitantes.
 on:
   workflow_dispatch: {}
+  push:
+    paths: ['.github/workflows/verificar-supabase.yml', 'supabase/**']
 
 jobs:
   verificar:
