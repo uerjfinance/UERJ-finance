@@ -27,6 +27,8 @@ jobs:
           curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" -X POST "$URL/rest/v1/carteiras" -d '{"nome":"invasor","is_liga":false,"dono_id":"00000000-0000-0000-0000-000000000000"}'
           echo "== Tentativa anônima de retirar ação do fundo (deve falhar)"
           curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" -X POST "$URL/rest/v1/rpc/retirar_do_fundo" -d '{"p_ticker":"PETR4","p_preco":30,"p_motivo":"teste anonimo"}'
+          echo "== Tentativa anônima de comprar ação para o fundo (deve falhar)"
+          curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" -X POST "$URL/rest/v1/rpc/adicionar_ao_fundo" -d '{"p_ticker":"PETR4","p_preco":30,"p_valor":1000,"p_motivo":"teste anonimo"}'
           echo "== Tentativa anônima de escrever nas movimentações (deve falhar)"
           curl -s -w "  [HTTP %{http_code}]\n" "${h[@]}" -X POST "$URL/rest/v1/movimentacoes" -d '{"ticker":"X","tipo":"venda","quantidade":1,"preco":1}'
           echo "== Tentativa anônima de escrever na auditoria (deve falhar)"
