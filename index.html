@@ -312,6 +312,7 @@ label.fld{display:flex;flex-direction:column;gap:4px;font-size:.8rem;font-weight
 .reuniao-body h4{font-family:var(--f-body);font-size:.9rem;margin-bottom:4px}
 .reuniao-body ul{margin:0;padding-left:1.1em}
 .btn[disabled]{opacity:.55;cursor:not-allowed}
+.btn-sm{min-height:34px;padding:4px 12px;font-size:.85rem}
 /* organograma */
 .org{display:flex;flex-direction:column;gap:28px}
 .org-top{display:flex;justify-content:center;position:relative}
@@ -1040,6 +1041,65 @@ if (MODO_SB) {
 }
 const st = { slide:0, slideT:Date.now(), slidePausa:false, slideHover:false, pub:null, sel:'', doc:0, edit:false, query:'', stock:'ITUB4', sort:'mc', confirm:null, propOk:false, propFiltro:'Todas' };
 
+/* ===================== FUNDO DA LIGA: POSIÇÕES E RETIRADAS =====================
+   Com o Supabase ligado, as posições do Fundo da Liga e as retiradas vêm do banco (leitura pública) e valem para todos.
+   A retirada passa pela função retirar_do_fundo, que confere no servidor se quem pede é o presidente ou tem "editarFundo".
+   Sem o banco (arquivo aberto no computador), a retirada é simulada e fica só neste navegador. */
+const isoBr = d => { const p = String(d || '').slice(0, 10).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(d || ''); };
+async function sbFundo(){
+  if (!sb) return;
+  const { data: cart, error } = await sb.from('carteiras').select('id').eq('is_liga', true).maybeSingle();
+  if (error || !cart) return;
+  const [{ data: pos, error: e1 }, { data: movs, error: e2 }] = await Promise.all([
+    sb.from('posicoes').select('ticker,quantidade,preco_entrada,data_entrada,tese').eq('carteira_id', cart.id),
+    sb.from('movimentacoes').select('ticker,tipo,quantidade,preco,preco_entrada,motivo,autor_nome,quando').eq('carteira_id', cart.id).order('quando', { ascending:false })
+  ]);
+  if (e1 || e2 || (!(pos || []).length && !(movs || []).length)) return;   // banco ainda sem o fundo: segue a carteira do arquivo
+  const f = funds.find(x => x.isLeague); if (!f) return;
+  f.holdings = (pos || []).map(p => { const o = { t:p.ticker, q:p.quantidade, b:+p.preco_entrada, d:isoBr(p.data_entrada), v:'' }; CAMPOS_TESE.forEach(k => o[k] = ''); if (p.tese) o.tese = p.tese; return o; });
+  f.real = (movs || []).filter(m => m.tipo === 'venda').reduce((a, m) => a + m.quantidade * (m.preco - (m.preco_entrada || m.preco)), 0);
+  st.fundoDb = true; st.movs = movs || [];
+}
+function retiradasRegistro(){
+  const local = (funds.find(x => x.isLeague) || {}).retiradas || [];
+  const lista = st.fundoDb ? st.movs.filter(m => m.tipo === 'venda').map(m => ({ data:fmtTs(m.quando).slice(0, 10), ativo:m.ticker, autor:m.autor_nome, motivo:m.motivo }))
+    : local.map(m => ({ data:m.data, ativo:m.t, autor:m.autor, motivo:m.motivo }));
+  return lista.map(m => ({ data:m.data, ativo:m.ativo, tipo:'Retirada do fundo', res:'Executada', dir:'Decisão de ' + (m.autor || 'diretoria'), just:m.motivo || '—' }));
+}
+function modalRetirar(t){
+  const f = funds.find(x => x.isLeague), cur = compute(f), x = cur.hs.find(y => y.h.t === t); if (!x) return;
+  const caixaDepois = cur.cash + x.val, invDepois = 1 - caixaDepois / cur.total;
+  abrirModal(`
+    <div class="hrow"><span class="eyebrow">Fundo da Liga · Retirada manual</span><button class="btn" data-act="close">Fechar</button></div>
+    <h2 id="modal-title">Retirar ${esc(t)} do fundo</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+      <div class="kpi"><span class="tiny muted">Quantidade</span><b>${x.h.q.toLocaleString('pt-BR')}</b></div>
+      <div class="kpi"><span class="tiny muted">Preço de venda</span><b>${brl(x.s.p)}</b><span class="tiny muted">Fechamento mais recente</span></div>
+      <div class="kpi"><span class="tiny muted">Valor que volta ao caixa</span><b>${brl(x.val)}</b></div>
+      <div class="kpi"><span class="tiny muted">Resultado da posição</span><b>${sigR(x.pnl)}</b><span class="tiny">${sig(x.pct)}</span></div>
+    </div>
+    ${invDepois < 0.95 ? `<div class="alert alert-warn">Depois da retirada, o fundo ficará <b>${(invDepois * 100).toFixed(1).replace('.', ',')}% investido</b>, abaixo do mínimo de 95%. O caixa precisará ser reinvestido.</div>` : ''}
+    <form id="form-retirar" class="stack" data-t="${esc(t)}">
+      <label class="fld" for="rt-motivo">Motivo da retirada (aparece no registro de decisões)<textarea id="rt-motivo" rows="3" required minlength="5" maxlength="500" placeholder="Ex.: a tese perdeu validade após a mudança na política de dividendos."></textarea></label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn btn-danger">Confirmar retirada de ${esc(t)}</button></div>
+    </form>`);
+}
+async function executarRetirada(t, motivo){
+  const f = funds.find(x => x.isLeague), h = f && f.holdings.find(x => x.t === t), s = SMAP[t];
+  if (!h || !s || !pode('editarFundo')) return;
+  if (st.fundoDb) {
+    const { error } = await sb.rpc('retirar_do_fundo', { p_ticker:t, p_preco:s.p, p_motivo:motivo });
+    if (error) { alert('O servidor recusou a retirada: ' + error.message); return; }
+    await sbFundo();
+  } else {
+    f.real = (f.real || 0) + h.q * (s.p - h.b);
+    f.holdings = f.holdings.filter(x => x.t !== t);
+    (f.retiradas = f.retiradas || []).unshift({ t, data:HOJE, autor:eu().nome, motivo });
+    registrar('retirou ' + t + ' do Fundo da Liga.'); saveContas(); save();
+  }
+  st.doc = 0; document.getElementById('modal').hidden = true; render();
+}
+
 /* ===================== UTILIDADES ===================== */
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const brl = v => v.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
@@ -1365,7 +1425,7 @@ function blocoCarteira(c, cur){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span class="chip ${enq ? 'chip-up' : 'chip-down'}">${enq ? 'Enquadrada' : 'Desenquadrada'} · ${(invPct * 100).toFixed(1).replace('.', ',')}% investido</span>
-        ${podeEditar ? `<button class="btn ${st.edit ? 'btn-primary' : ''}" data-act="edit">${st.edit ? 'Concluir edição' : 'Editar carteira'}</button>` : ''}
+        ${podeEditar && !(f.isLeague && st.fundoDb) ? `<button class="btn ${st.edit ? 'btn-primary' : ''}" data-act="edit">${st.edit ? 'Concluir edição' : 'Editar carteira'}</button>` : ''}
       </div>
     </div>
     <div class="kpis">
@@ -1416,9 +1476,10 @@ function blocoCarteira(c, cur){
     holdings = `
     <div class="panel stack">
       <div class="hrow"><h3>Ações compradas</h3><span class="tiny muted">Resultado desde o preço de compra de cada ação</span></div>
-      ${cur.hs.length ? `<div class="tbl"><table><thead><tr><th>Ação</th><th>Compra</th><th>Qtd.</th><th>Preço compra</th><th>Preço atual</th><th>Investido</th><th>Valor atual</th><th>Lucro / prejuízo</th></tr></thead><tbody>
-      ${cur.hs.map((x, i) => `<tr class="click ${i === docI ? 'on' : ''}" data-act="doc" data-i="${i}"><td class="tk"><b>${x.h.t}</b><br><span class="tiny muted">${esc(x.s.n)}</span></td><td>${esc(x.h.d)}</td><td>${x.h.q.toLocaleString('pt-BR')}</td><td>${brl(x.h.b)}</td><td>${brl(x.s.p)}</td><td>${brl(x.inv)}</td><td>${brl(x.val)}</td><td>${sigR(x.pnl)}<br><span class="tiny">${sig(x.pct)}</span></td></tr>`).join('')}
-      </tbody><tfoot><tr><td>Total em ações</td><td></td><td></td><td></td><td></td><td>${brl(cur.inv)}</td><td>${brl(cur.val)}</td><td>${sigR(cur.val - cur.inv)}</td></tr></tfoot></table></div>` : `<p class="muted">Nenhuma ação ainda. Clique em "Editar carteira" para adicionar.</p>`}
+      ${f.isLeague && pode('editarFundo') ? `<div class="alert alert-warn small">Você pode retirar ações do Fundo da Liga. A venda usa o fechamento mais recente, o valor volta ao caixa e a retirada fica no registro de decisões${st.fundoDb ? ', visível para todos' : ' deste navegador'}.</div>` : ''}
+      ${cur.hs.length ? `<div class="tbl"><table><thead><tr><th>Ação</th><th>Compra</th><th>Qtd.</th><th>Preço compra</th><th>Preço atual</th><th>Investido</th><th>Valor atual</th><th>Lucro / prejuízo</th>${f.isLeague && pode('editarFundo') ? '<th aria-label="Retirar"></th>' : ''}</tr></thead><tbody>
+      ${cur.hs.map((x, i) => `<tr class="click ${i === docI ? 'on' : ''}" data-act="doc" data-i="${i}"><td class="tk"><b>${x.h.t}</b><br><span class="tiny muted">${esc(x.s.n)}</span></td><td>${esc(x.h.d)}</td><td>${x.h.q.toLocaleString('pt-BR')}</td><td>${brl(x.h.b)}</td><td>${brl(x.s.p)}</td><td>${brl(x.inv)}</td><td>${brl(x.val)}</td><td>${sigR(x.pnl)}<br><span class="tiny">${sig(x.pct)}</span></td>${f.isLeague && pode('editarFundo') ? `<td><button class="btn btn-danger btn-sm" data-act="retirar" data-t="${x.h.t}">Retirar</button></td>` : ''}</tr>`).join('')}
+      </tbody><tfoot><tr><td>Total em ações</td><td></td><td></td><td></td><td></td><td>${brl(cur.inv)}</td><td>${brl(cur.val)}</td><td>${sigR(cur.val - cur.inv)}</td>${f.isLeague && pode('editarFundo') ? '<td></td>' : ''}</tr></tfoot></table></div>` : `<p class="muted">Nenhuma ação ainda. Clique em "Editar carteira" para adicionar.</p>`}
     </div>`;
   }
 
@@ -1558,7 +1619,7 @@ function renderComite(){
       <div class="grow panel stack" style="flex-basis:520px">
         <div class="hrow"><h3>Registro das decisões</h3><span class="tiny muted">Preenchido automaticamente quando a diretoria decide uma proposta</span></div>
         <div class="tbl"><table style="min-width:680px"><thead><tr><th>Data</th><th>Ativo</th><th>Tipo</th><th>Resultado</th><th>Votos da diretoria</th><th style="text-align:left">Justificativa</th></tr></thead><tbody>
-          ${DECISOES.map(r => `<tr><td>${r.data}${r.exemplo ? '<br><span class="chip chip-ex">Exemplo</span>' : ''}</td><td style="font-family:var(--f-body);white-space:normal;text-align:right">${esc(r.ativo)}</td><td style="font-family:var(--f-body)">${esc(r.tipo)}</td><td><span class="${stChip(r.res === 'Mantida' ? 'Aprovada' : r.res)}">${esc(r.res)}</span></td><td>${r.dir}</td><td style="font-family:var(--f-body);white-space:normal;text-align:left;min-width:220px">${esc(r.just)}</td></tr>`).join('')}
+          ${[...retiradasRegistro(), ...DECISOES].map(r => `<tr><td>${r.data}${r.exemplo ? '<br><span class="chip chip-ex">Exemplo</span>' : ''}</td><td style="font-family:var(--f-body);white-space:normal;text-align:right">${esc(r.ativo)}</td><td style="font-family:var(--f-body)">${esc(r.tipo)}</td><td><span class="${stChip(r.res === 'Mantida' ? 'Aprovada' : r.res)}">${esc(r.res)}</span></td><td>${r.dir}</td><td style="font-family:var(--f-body);white-space:normal;text-align:left;min-width:220px">${esc(r.just)}</td></tr>`).join('')}
         </tbody></table></div>
       </div>
       <aside class="side panel stack-s" style="flex-basis:300px"><h3>Regras do comitê</h3><ol class="small regras">${REGRAS_COMITE.map(r => `<li>${esc(r)}</li>`).join('')}</ol></aside>
@@ -2043,6 +2104,7 @@ document.addEventListener('click', e => {
     if (currentView() !== 'membros') { go('membros'); setTimeout(() => { const t = document.getElementById('carteiras'); if (t) t.scrollIntoView(); }, 0); return; }
     render(); const t = document.getElementById('carteiras'); if (t && (el.dataset.scroll || el.closest('#rankings'))) t.scrollIntoView({ behavior:'smooth' }); return;
   }
+  if (a === 'retirar') { e.stopPropagation(); modalRetirar(el.dataset.t); return; }
   if (a === 'doc') { st.doc = +el.dataset.i; render(); return; }
   if (a === 'edit') { st.edit = !st.edit; render(); return; }
   if (a === 'addrow') { const o = { t:'VALE3', q:100, b:SMAP.VALE3.p, d:HOJE, v:'' }; CAMPOS_TESE.forEach(k => o[k] = ''); selFund().holdings.push(o); save(); render(); return; }
@@ -2166,7 +2228,12 @@ document.addEventListener('change', e => { if (e.target.id !== 'pp-v') return; c
   if (pos) { document.getElementById('pp-a').value = pos; ppDividir(); } });
 window.addEventListener('hashchange', show);
 
+document.addEventListener('submit', e => {
+  if (e.target.id === 'form-retirar') { e.preventDefault(); const m = document.getElementById('rt-motivo').value.trim();
+    if (m.length < 5) { alert('Explique o motivo da retirada.'); return; } e.target.querySelector('[type=submit]').disabled = true; executarRetirada(e.target.dataset.t, m); }
+});
 renderTape(); show();
+if (MODO_SB) sbFundo().then(() => { if (st.fundoDb) render(); }).catch(() => {});
 fetch('dados/cotacoes.json', { cache:'no-cache' })
   .then(r => r.ok ? r.json() : null)
   .then(j => { if (aplicarCotacoes(j)) { renderTape(); render(); } })

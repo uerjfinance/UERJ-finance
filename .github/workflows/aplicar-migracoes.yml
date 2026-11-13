@@ -1,0 +1,34 @@
+name: Aplicar migrações do banco
+
+# Aplica no Supabase, em ordem, os arquivos de supabase/migracoes/ que ainda não foram aplicados.
+# Cada arquivo roda numa transação única: se der erro, nada daquele arquivo fica gravado.
+# A tabela public._migracoes guarda o que já foi aplicado (sem acesso para visitantes).
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/migracoes/**']
+  workflow_dispatch: {}
+
+concurrency:
+  group: migracoes
+  cancel-in-progress: false
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    container: postgres:17
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Aplicar migrações pendentes
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB" ]; then echo "Falta o segredo SUPABASE_DB_URL."; exit 1; fi
+          psql "$DB" -v ON_ERROR_STOP=1 -q -c "create table if not exists public._migracoes (nome text primary key, aplicada_em timestamptz not null default now()); alter table public._migracoes enable row level security; revoke all on public._migracoes from anon, authenticated;"
+          for f in $(ls supabase/migracoes/*.sql | sort); do
+            n=$(basename "$f")
+            if [ "$(psql "$DB" -tAc "select 1 from public._migracoes where nome = '$n'")" = "1" ]; then echo "Já aplicada: $n"; continue; fi
+            echo "Aplicando: $n"
+            psql "$DB" -v ON_ERROR_STOP=1 -1 -f "$f" -c "insert into public._migracoes (nome) values ('$n')"
+          done
