@@ -188,3 +188,5 @@ revoke insert, update, delete on public.auditoria from anon, authenticated;
 -- ---------- 9. Primeiro presidente (rodar UMA vez, depois de o Gabriel se cadastrar pelo site) ----------
 -- update public.perfis set papel = 'presidente', status = 'ativo' where email = 'EMAIL_DO_GABRIEL';
 -- insert into public.carteiras (is_liga, nome) values (true, 'Fundo da Liga');
+
+-- Alterações posteriores ficam em supabase/migracoes/ e são aplicadas pelo workflow "Aplicar migrações do banco".
