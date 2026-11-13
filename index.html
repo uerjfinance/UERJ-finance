@@ -1062,9 +1062,53 @@ async function sbFundo(){
 }
 function retiradasRegistro(){
   const local = (funds.find(x => x.isLeague) || {}).retiradas || [];
-  const lista = st.fundoDb ? st.movs.filter(m => m.tipo === 'venda').map(m => ({ data:fmtTs(m.quando).slice(0, 10), ativo:m.ticker, autor:m.autor_nome, motivo:m.motivo }))
-    : local.map(m => ({ data:m.data, ativo:m.t, autor:m.autor, motivo:m.motivo }));
-  return lista.map(m => ({ data:m.data, ativo:m.ativo, tipo:'Retirada do fundo', res:'Executada', dir:'Decisão de ' + (m.autor || 'diretoria'), just:m.motivo || '—' }));
+  const lista = st.fundoDb ? st.movs.map(m => ({ data:fmtTs(m.quando).slice(0, 10), ativo:m.ticker, autor:m.autor_nome, motivo:m.motivo, compra:m.tipo === 'compra' }))
+    : local.map(m => ({ data:m.data, ativo:m.t, autor:m.autor, motivo:m.motivo, compra:m.tipo === 'compra' }));
+  return lista.map(m => ({ data:m.data, ativo:m.ativo, tipo:m.compra ? 'Compra para o fundo' : 'Retirada do fundo', res:'Executada', dir:'Decisão de ' + (m.autor || 'diretoria'), just:m.motivo || '—' }));
+}
+function modalAdicionar(){
+  const f = funds.find(x => x.isLeague), cur = compute(f), caixa = Math.floor(cur.cash);
+  const opts = STOCKS.slice().sort((a, b) => a.t.localeCompare(b.t)).map(s => `<option value="${s.t}">${s.t} · ${esc(s.n)} · ${brl(s.p)}${f.holdings.some(h => h.t === s.t) ? ' · já no fundo' : ''}</option>`).join('');
+  abrirModal(`
+    <div class="hrow"><span class="eyebrow">Fundo da Liga · Compra manual</span><button class="btn" data-act="close">Fechar</button></div>
+    <h2 id="modal-title">Adicionar ação ao fundo</h2>
+    <p class="muted small">Caixa disponível: <b>${brl(cur.cash)}</b>. A compra usa o fechamento mais recente e quantidades inteiras. Se a ação já estiver no fundo, a posição é reforçada e o preço médio é recalculado.</p>
+    ${caixa < 100 ? `<div class="alert alert-warn">O fundo está sem caixa. Retire uma ação antes de comprar outra.</div>` : `
+    <form id="form-adicionar" class="stack">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+        <label class="fld" for="ad-t">Ação<select id="ad-t" required><option value="">Selecione</option>${opts}</select></label>
+        <label class="fld" for="ad-v">Valor a investir (R$)<input id="ad-v" type="number" min="1" max="${caixa}" step="any" required value="${caixa}"></label>
+      </div>
+      <div id="ad-prev" class="small muted" aria-live="polite">Escolha a ação para ver a quantidade e o efeito no fundo.</div>
+      <label class="fld" for="ad-motivo">Motivo da compra (aparece no registro de decisões)<textarea id="ad-motivo" rows="3" required minlength="5" maxlength="500" placeholder="Ex.: tese aprovada pela diretoria; minério sustentado pelos estímulos na China."></textarea></label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end"><button type="button" class="btn" data-act="close">Cancelar</button><button type="submit" class="btn btn-primary">Confirmar compra</button></div>
+    </form>`}`);
+}
+function previaCompra(){
+  const t = (document.getElementById('ad-t') || {}).value, v = +((document.getElementById('ad-v') || {}).value || 0), box = document.getElementById('ad-prev');
+  if (!box) return null; const s = SMAP[t];
+  if (!s) { box.textContent = 'Escolha a ação para ver a quantidade e o efeito no fundo.'; return null; }
+  const cur = compute(funds.find(x => x.isLeague)), q = Math.floor(v / s.p), custo = q * s.p;
+  if (q < 1) { box.innerHTML = `<span class="down">O valor não compra nem uma ação de ${esc(t)} (${brl(s.p)}).</span>`; return null; }
+  if (custo > cur.cash + 0.01) { box.innerHTML = `<span class="down">A compra custaria ${brl(custo)}, acima do caixa de ${brl(cur.cash)}.</span>`; return null; }
+  const inv = (cur.val + custo) / cur.total;
+  box.innerHTML = `<b>${q.toLocaleString('pt-BR')} ações</b> de ${esc(t)} a ${brl(s.p)} = <b>${brl(custo)}</b>. Caixa depois: ${brl(cur.cash - custo)}. O fundo fica ${(inv * 100).toFixed(1).replace('.', ',')}% investido${inv < 0.95 ? ' (ainda abaixo do mínimo de 95%)' : ''}.`;
+  return { t, q, p:s.p, v };
+}
+async function executarCompra(c, motivo){
+  const f = funds.find(x => x.isLeague); if (!f || !pode('editarFundo')) return;
+  if (st.fundoDb) {
+    const { error } = await sb.rpc('adicionar_ao_fundo', { p_ticker:c.t, p_preco:c.p, p_valor:c.v, p_motivo:motivo });
+    if (error) { alert('O servidor recusou a compra: ' + error.message); const b = document.querySelector('#form-adicionar [type=submit]'); if (b) b.disabled = false; return; }
+    await sbFundo();
+  } else {
+    const h = f.holdings.find(x => x.t === c.t);
+    if (h) { h.b = +((h.q * h.b + c.q * c.p) / (h.q + c.q)).toFixed(2); h.q += c.q; }
+    else { const o = { t:c.t, q:c.q, b:c.p, d:HOJE, v:'' }; CAMPOS_TESE.forEach(k => o[k] = ''); f.holdings.push(o); }
+    (f.retiradas = f.retiradas || []).unshift({ t:c.t, data:HOJE, autor:eu().nome, motivo, tipo:'compra' });
+    registrar('comprou ' + c.q + ' ações de ' + c.t + ' para o Fundo da Liga.'); saveContas(); save();
+  }
+  document.getElementById('modal').hidden = true; render();
 }
 function modalRetirar(t){
   const f = funds.find(x => x.isLeague), cur = compute(f), x = cur.hs.find(y => y.h.t === t); if (!x) return;
@@ -1475,8 +1519,8 @@ function blocoCarteira(c, cur){
   } else {
     holdings = `
     <div class="panel stack">
-      <div class="hrow"><h3>Ações compradas</h3><span class="tiny muted">Resultado desde o preço de compra de cada ação</span></div>
-      ${f.isLeague && pode('editarFundo') ? `<div class="alert alert-warn small">Você pode retirar ações do Fundo da Liga. A venda usa o fechamento mais recente, o valor volta ao caixa e a retirada fica no registro de decisões${st.fundoDb ? ', visível para todos' : ' deste navegador'}.</div>` : ''}
+      <div class="hrow"><h3>Ações compradas</h3>${f.isLeague && pode('editarFundo') ? `<button class="btn btn-primary btn-sm" data-act="adicionar">+ Adicionar ação</button>` : '<span class="tiny muted">Resultado desde o preço de compra de cada ação</span>'}</div>
+      ${f.isLeague && pode('editarFundo') ? `<div class="alert alert-warn small">Você pode comprar e retirar ações do Fundo da Liga. As operações usam o fechamento mais recente, movimentam o caixa (hoje ${brl(cur.cash)}) e ficam no registro de decisões${st.fundoDb ? ', visível para todos' : ' deste navegador'}.</div>` : ''}
       ${cur.hs.length ? `<div class="tbl"><table><thead><tr><th>Ação</th><th>Compra</th><th>Qtd.</th><th>Preço compra</th><th>Preço atual</th><th>Investido</th><th>Valor atual</th><th>Lucro / prejuízo</th>${f.isLeague && pode('editarFundo') ? '<th aria-label="Retirar"></th>' : ''}</tr></thead><tbody>
       ${cur.hs.map((x, i) => `<tr class="click ${i === docI ? 'on' : ''}" data-act="doc" data-i="${i}"><td class="tk"><b>${x.h.t}</b><br><span class="tiny muted">${esc(x.s.n)}</span></td><td>${esc(x.h.d)}</td><td>${x.h.q.toLocaleString('pt-BR')}</td><td>${brl(x.h.b)}</td><td>${brl(x.s.p)}</td><td>${brl(x.inv)}</td><td>${brl(x.val)}</td><td>${sigR(x.pnl)}<br><span class="tiny">${sig(x.pct)}</span></td>${f.isLeague && pode('editarFundo') ? `<td><button class="btn btn-danger btn-sm" data-act="retirar" data-t="${x.h.t}">Retirar</button></td>` : ''}</tr>`).join('')}
       </tbody><tfoot><tr><td>Total em ações</td><td></td><td></td><td></td><td></td><td>${brl(cur.inv)}</td><td>${brl(cur.val)}</td><td>${sigR(cur.val - cur.inv)}</td>${f.isLeague && pode('editarFundo') ? '<td></td>' : ''}</tr></tfoot></table></div>` : `<p class="muted">Nenhuma ação ainda. Clique em "Editar carteira" para adicionar.</p>`}
@@ -1712,7 +1756,7 @@ function renderDestaque(c){
     </div>
     <div class="side panel stack">
       <div><h3>Contribuição no mês</h3><p class="tiny muted">Ganho ou perda de cada ação de ${esc(top.f.name)}, em reais</p></div>
-      <div class="contrib">${contrib.map(x => { const w = Math.abs(x.mPnl) / maxAbs * 100; return `<div class="cbar"><b class="mono">${x.h.t}</b><span class="neg">${x.mPnl < 0 ? `<span style="width:${w}%"></span>` : ''}</span><span class="pos2 axis">${x.mPnl >= 0 ? `<span style="width:${w}%"></span>` : ''}</span><span class="num tiny" style="text-align:right">${sigR(x.mPnl)}</span></div>`; }).join('')}</div>
+      <div class="contrib">${contrib.map(x => { const w = Math.abs(x.mPnl) / maxAbs * 100; return `<div class="cbar"><b class="mono">${x.h.t}</b><span class="down">${x.mPnl < 0 ? `<span style="width:${w}%"></span>` : ''}</span><span class="pos2 axis">${x.mPnl >= 0 ? `<span style="width:${w}%"></span>` : ''}</span><span class="num tiny" style="text-align:right">${sigR(x.mPnl)}</span></div>`; }).join('')}</div>
     </div>
   </div>
   <div class="panel stack">
@@ -2105,6 +2149,7 @@ document.addEventListener('click', e => {
     render(); const t = document.getElementById('carteiras'); if (t && (el.dataset.scroll || el.closest('#rankings'))) t.scrollIntoView({ behavior:'smooth' }); return;
   }
   if (a === 'retirar') { e.stopPropagation(); modalRetirar(el.dataset.t); return; }
+  if (a === 'adicionar') { modalAdicionar(); return; }
   if (a === 'doc') { st.doc = +el.dataset.i; render(); return; }
   if (a === 'edit') { st.edit = !st.edit; render(); return; }
   if (a === 'addrow') { const o = { t:'VALE3', q:100, b:SMAP.VALE3.p, d:HOJE, v:'' }; CAMPOS_TESE.forEach(k => o[k] = ''); selFund().holdings.push(o); save(); render(); return; }
@@ -2229,9 +2274,14 @@ document.addEventListener('change', e => { if (e.target.id !== 'pp-v') return; c
 window.addEventListener('hashchange', show);
 
 document.addEventListener('submit', e => {
+  if (e.target.id === 'form-adicionar') { e.preventDefault(); const c = previaCompra(), m = document.getElementById('ad-motivo').value.trim();
+    if (!c) { alert('Revise a ação e o valor da compra.'); return; } if (m.length < 5) { alert('Explique o motivo da compra.'); return; }
+    e.target.querySelector('[type=submit]').disabled = true; executarCompra(c, m); return; }
   if (e.target.id === 'form-retirar') { e.preventDefault(); const m = document.getElementById('rt-motivo').value.trim();
     if (m.length < 5) { alert('Explique o motivo da retirada.'); return; } e.target.querySelector('[type=submit]').disabled = true; executarRetirada(e.target.dataset.t, m); }
 });
+document.addEventListener('input', e => { if (e.target.id === 'ad-t' || e.target.id === 'ad-v') previaCompra(); });
+document.addEventListener('change', e => { if (e.target.id === 'ad-t') previaCompra(); });
 renderTape(); show();
 if (MODO_SB) sbFundo().then(() => { if (st.fundoDb) render(); }).catch(() => {});
 fetch('dados/cotacoes.json', { cache:'no-cache' })
