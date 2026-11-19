@@ -18,23 +18,34 @@ concurrency:
 jobs:
   api:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       URL: https://fupmxsdorbjsvzlhgvjv.supabase.co
       KEY: sb_publishable_0FhOmPYTv2vznjnfHIRDKg_zDk_MH5G
     steps:
       - name: Leituras pela API pública (as mesmas que o site faz)
         run: |
+          # Lê uma tabela com até 3 tentativas (espera 10 s e 30 s entre elas).
+          # Erros 5xx isolados (ex.: 522, timeout entre a Cloudflare e o servidor)
+          # são comuns e passageiros; só conta como falha se as 3 tentativas falharem.
+          ler() {
+            local alvo="$1" code espera
+            for espera in 10 30 0; do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 \
+                       -H "apikey: $KEY" "$URL/$alvo") || code="000"
+              echo "GET $alvo: HTTP $code"
+              [ "$code" = "200" ] && return 0
+              [ "$espera" -gt 0 ] && { echo "  nova tentativa em ${espera}s"; sleep "$espera"; }
+            done
+            return 1
+          }
           falhas=0
           for t in carteiras posicoes movimentacoes; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" -H "apikey: $KEY" "$URL/rest/v1/$t?select=*&limit=50")
-            echo "GET $t: HTTP $code"
-            [ "$code" = "200" ] || falhas=$((falhas + 1))
+            ler "rest/v1/$t?select=*&limit=50" || falhas=$((falhas + 1))
           done
-          code=$(curl -s -o /dev/null -w "%{http_code}" -H "apikey: $KEY" "$URL/auth/v1/health")
-          echo "Auth: HTTP $code"
+          ler "auth/v1/health" || echo "::notice::Auth não respondeu 200 (não bloqueia a rotina)."
           if [ "$falhas" -gt 0 ]; then
-            echo "::warning::A API da Supabase não respondeu como esperado. Se o projeto estiver pausado, reative em supabase.com/dashboard (Resume project)."
+            echo "::warning::A API da Supabase falhou em $falhas tabela(s) após 3 tentativas. Se o projeto estiver pausado, reative em supabase.com/dashboard (Resume project)."
             exit 1
           fi
 
