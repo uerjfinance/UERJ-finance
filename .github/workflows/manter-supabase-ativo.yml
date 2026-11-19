@@ -1,0 +1,54 @@
+name: Manter o Supabase ativo
+
+# O plano gratuito da Supabase pausa projetos com pouca atividade em 7 dias.
+# Esta rotina roda três vezes por dia, todos os dias (inclusive fins de semana),
+# e gera atividade real: leituras pela API pública e consultas diretas ao banco.
+# Apenas leitura: nada é gravado ou alterado.
+on:
+  schedule:
+    - cron: "17 2 * * *"    # 23:17 de Brasília
+    - cron: "17 10 * * *"   # 07:17 de Brasília
+    - cron: "17 18 * * *"   # 15:17 de Brasília
+  workflow_dispatch: {}
+
+concurrency:
+  group: manter-supabase-ativo
+  cancel-in-progress: true
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      URL: https://fupmxsdorbjsvzlhgvjv.supabase.co
+      KEY: sb_publishable_0FhOmPYTv2vznjnfHIRDKg_zDk_MH5G
+    steps:
+      - name: Leituras pela API pública (as mesmas que o site faz)
+        run: |
+          falhas=0
+          for t in carteiras posicoes movimentacoes; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -H "apikey: $KEY" "$URL/rest/v1/$t?select=*&limit=50")
+            echo "GET $t: HTTP $code"
+            [ "$code" = "200" ] || falhas=$((falhas + 1))
+          done
+          code=$(curl -s -o /dev/null -w "%{http_code}" -H "apikey: $KEY" "$URL/auth/v1/health")
+          echo "Auth: HTTP $code"
+          if [ "$falhas" -gt 0 ]; then
+            echo "::warning::A API da Supabase não respondeu como esperado. Se o projeto estiver pausado, reative em supabase.com/dashboard (Resume project)."
+            exit 1
+          fi
+
+  banco:
+    runs-on: ubuntu-latest
+    container: postgres:17
+    timeout-minutes: 5
+    steps:
+      - name: Consultas diretas ao banco
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB" ]; then echo "Falta o segredo SUPABASE_DB_URL."; exit 1; fi
+          psql "$DB" -v ON_ERROR_STOP=1 -qAt -c "select 'posições no fundo: ' || count(*) from public.posicoes" \
+                                              -c "select 'movimentações: ' || count(*) from public.movimentacoes" \
+                                              -c "select 'perfis: ' || count(*) from public.perfis" \
+                                              -c "select 'banco ativo em ' || to_char(now() at time zone 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI')"
