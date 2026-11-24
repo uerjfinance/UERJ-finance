@@ -1024,6 +1024,38 @@ async function sbCadastro(){
   if (data && data.session) await sb.auth.signOut();   // a conta nasce pendente: não fica logada
   modalCadastro(['alert-up', 'Pedido enviado. Confirme o seu e-mail pelo link que enviamos; depois disso, o pedido segue para aprovação.'], true);
 }
+// Recuperação de senha: o link do e-mail volta para o site com type=recovery (ou com erro, se expirou).
+// Lemos o endereço antes de criar o cliente, porque o supabase-js limpa os tokens da barra de endereço.
+const LINK_RECUPERACAO = /type=recovery/.test(location.hash + location.search);
+const LINK_EXPIRADO = /error_code=otp_expired|error=access_denied/.test(location.hash + location.search);
+let recuperacaoAberta = false;
+async function sbEsqueci(){
+  const em = document.getElementById('es-e').value.trim().toLowerCase();
+  const { error } = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
+  if (error && /rate|limit|seconds/i.test(error.message)) { modalEsqueci(['alert-warn', 'Muitos pedidos em pouco tempo. Aguarde alguns minutos e tente de novo.']); return; }
+  if (error && !/not found|user/i.test(error.message)) { modalEsqueci(['alert-down', 'Não foi possível enviar o e-mail agora: ' + error.message]); return; }
+  // Mesma resposta exista ou não a conta: assim o formulário não revela quem é cadastrado.
+  modalEsqueci(['alert-up', 'Se houver uma conta com este e-mail, o link para criar uma nova senha chega em alguns minutos. Confira também a caixa de spam.'], true);
+}
+async function sbNovaSenha(){
+  const s1 = document.getElementById('ns-s').value, s2 = document.getElementById('ns-s2').value;
+  if (s1 !== s2) { modalNovaSenha(['alert-down', 'As senhas não conferem.']); return; }
+  const { error } = await sb.auth.updateUser({ password: s1 });
+  if (error) { modalNovaSenha(['alert-down', /different|same/i.test(error.message) ? 'A nova senha precisa ser diferente da anterior.'
+    : /session|expired|jwt/i.test(error.message) ? 'O link expirou. Peça um novo em "Esqueci a senha".' : 'Não foi possível salvar a senha: ' + error.message]); return; }
+  await sbCarregar();
+  const u = contas.find(x => x.id === sessao);
+  if (!u || u.status !== 'ativo') { await sb.auth.signOut(); contas = []; sessao = ''; modalLogin(['alert-up', 'Senha alterada. Você poderá entrar com ela assim que o seu cadastro estiver ativo.']); return; }
+  show();
+  abrirModal(`<div class="hrow"><span class="eyebrow">Área de membros</span><button class="btn" data-act="close">Fechar</button></div>
+    <h2 id="modal-title">Senha alterada</h2><div class="alert alert-up">Você já está conectado. Nas próximas vezes, entre com a nova senha.</div>
+    <div><button class="btn btn-primary" data-act="close">Entendi</button></div>`);
+}
+function abrirRecuperacao(){
+  if (recuperacaoAberta) return; recuperacaoAberta = true;
+  if (/access_token|type=recovery/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
+  modalNovaSenha();
+}
 if (MODO_SB) {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
   document.addEventListener('click', e => {
@@ -1035,9 +1067,16 @@ if (MODO_SB) {
   document.addEventListener('submit', e => {
     if (e.target.id === 'form-login') { e.preventDefault(); e.stopImmediatePropagation(); sbLogin(document.getElementById('lg-e').value.trim().toLowerCase(), document.getElementById('lg-s').value); }
     if (e.target.id === 'form-cadastro') { e.preventDefault(); e.stopImmediatePropagation(); sbCadastro(); }
+    if (e.target.id === 'form-esqueci') { e.preventDefault(); e.stopImmediatePropagation(); sbEsqueci(); }
+    if (e.target.id === 'form-novasenha') { e.preventDefault(); e.stopImmediatePropagation(); sbNovaSenha(); }
   }, true);
   contas = []; sessao = ''; auditoria = [];
-  sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT' || ev === 'TOKEN_REFRESHED') return; setTimeout(() => sbCarregar().then(show), 0); });
+  sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === 'SIGNED_OUT' || ev === 'TOKEN_REFRESHED') return;
+    const recuperar = ev === 'PASSWORD_RECOVERY' || (LINK_RECUPERACAO && session && !recuperacaoAberta);
+    setTimeout(() => sbCarregar().then(() => { show(); if (recuperar) abrirRecuperacao(); }), 0);
+  });
+  if (LINK_EXPIRADO) setTimeout(() => { history.replaceState(null, '', location.pathname + location.search); modalEsqueci(['alert-down', 'O link de redefinição expirou ou já foi usado. Peça um novo abaixo.']); }, 0);
 }
 const st = { slide:0, slideT:Date.now(), slidePausa:false, slideHover:false, pub:null, sel:'', doc:0, edit:false, query:'', stock:'ITUB4', sort:'mc', confirm:null, propOk:false, propFiltro:'Todas' };
 
@@ -2013,9 +2052,36 @@ function modalLogin(msg){
       <label class="fld" for="lg-s">Senha<input id="lg-s" type="password" required autocomplete="current-password"></label>
       <button class="btn btn-primary" type="submit">Entrar</button>
       <p class="small muted">Ainda não é membro? <button type="button" class="btn btn-ghost" style="min-height:32px;padding:0 6px" data-act="cadastro">Pedir cadastro</button></p>
-      <p class="tiny muted">Esqueceu a senha? Na versão final, o link de redefinição chega por e-mail.</p>
+      <p class="small muted">Esqueceu a senha? <button type="button" class="btn btn-ghost" style="min-height:32px;padding:0 6px" data-act="esqueci">Criar uma nova</button></p>
     </form>`);
   document.getElementById('lg-e').focus();
+}
+function modalEsqueci(msg, ok){
+  abrirModal(`
+    <div class="hrow"><span class="eyebrow">Área de membros</span><button class="btn" data-act="close">Fechar</button></div>
+    <div class="stack-s"><h2 id="modal-title">Esqueci a senha</h2>
+      <p class="small muted">Informe o e-mail da sua conta. Enviaremos um link para você criar uma nova senha; ele vale por 1 hora e só pode ser usado uma vez.</p></div>
+    ${msg ? `<div class="alert ${msg[0]}">${msg[1]}</div>` : ''}
+    ${ok ? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" data-act="close">Entendi</button><button class="btn" data-act="login">Voltar para entrar</button></div>` : `
+    <form class="stack" id="form-esqueci" style="max-width:420px">
+      <label class="fld" for="es-e">E-mail<input id="es-e" type="email" required autocomplete="username"></label>
+      <button class="btn btn-primary" type="submit">Enviar link</button>
+      <p class="small muted">Lembrou? <button type="button" class="btn btn-ghost" style="min-height:32px;padding:0 6px" data-act="login">Voltar para entrar</button></p>
+    </form>`}`);
+  const f = document.getElementById('es-e'); if (f) f.focus();
+}
+function modalNovaSenha(msg){
+  abrirModal(`
+    <div class="hrow"><span class="eyebrow">Área de membros</span><button class="btn" data-act="close">Fechar</button></div>
+    <div class="stack-s"><h2 id="modal-title">Criar nova senha</h2>
+      <p class="small muted">Escolha uma senha de pelo menos 8 caracteres, diferente da anterior.</p></div>
+    ${msg ? `<div class="alert ${msg[0]}">${msg[1]}</div>` : ''}
+    <form class="stack" id="form-novasenha" style="max-width:420px">
+      <label class="fld" for="ns-s">Nova senha<input id="ns-s" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label class="fld" for="ns-s2">Confirmar nova senha<input id="ns-s2" type="password" required minlength="8" autocomplete="new-password"></label>
+      <button class="btn btn-primary" type="submit">Salvar nova senha</button>
+    </form>`);
+  document.getElementById('ns-s').focus();
 }
 function modalCadastro(msg, ok){
   abrirModal(`
@@ -2165,6 +2231,7 @@ document.addEventListener('click', e => {
   if (a === 'slidepause') { st.slidePausa = !st.slidePausa; st.slideT = Date.now(); el.textContent = st.slidePausa ? '▶' : '❚❚'; el.setAttribute('aria-label', st.slidePausa ? 'Retomar rotação' : 'Pausar rotação'); const pr = document.getElementById('car-prog'); if (pr) { pr.classList.toggle('paused', st.slidePausa); if (!st.slidePausa) irSlide(st.slide); } return; }
   if ((a === 'login' || a === 'cadastro') && !CONTAS_ATIVAS) { abrirModal(`<div class="hrow"><span class="eyebrow">Área de membros</span><button class="btn" data-act="close">Fechar</button></div><h2 id="modal-title">Em implantação</h2><p class="muted">O cadastro de membros será aberto em breve. Acompanhe as redes da UERJ Finance.</p>`); return; }
   if (a === 'login') { modalLogin(); return; }
+  if (a === 'esqueci') { modalEsqueci(); return; }
   if (a === 'cadastro') { modalCadastro(); return; }
   if (a === 'logout') { registrar('saiu da conta.'); setSessao(''); saveContas(); st.pub = null; st.edit = false; show(); return; }
   if (a === 'resetcontas') { if (st.confirm === 'contas') { contas = contasSeed(); auditoria = []; setSessao(''); saveContas(); st.confirm = null; show(); } else { st.confirm = 'contas'; renderPerfil(); } return; }
@@ -2224,6 +2291,8 @@ document.addEventListener('click', e => {
   if (b.form.reportValidity()) b.form.dispatchEvent(new Event('submit', { bubbles:true, cancelable:true }));
 }, true);
 document.addEventListener('submit', e => {
+  if (e.target.id === 'form-esqueci') { e.preventDefault();
+    modalEsqueci(['alert-warn', 'Nesta versão local não há envio de e-mail. Use "Restaurar contas de teste" na faixa do topo para voltar às senhas de exemplo.'], true); return; }
   if (e.target.id === 'form-login') { e.preventDefault();
     const em = document.getElementById('lg-e').value.trim().toLowerCase(), se = document.getElementById('lg-s').value;
     const u = contas.find(x => x.email.toLowerCase() === em);
